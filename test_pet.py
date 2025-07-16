@@ -1,46 +1,71 @@
-from jsonschema import validate
+from jsonschema import validate as validate_schema, ValidationError
 import pytest
 import schemas
 import api_helpers
 from hamcrest import assert_that, contains_string, is_
 
-'''
-TODO: Finish this test by...
-1) Troubleshooting and fixing the test failure
-The purpose of this test is to validate the response matches the expected schema defined in schemas.py
-'''
-def test_pet_schema():
-    test_endpoint = "/pets/1"
+# ---------------------- Test: Pet Schema ----------------------
 
-    response = api_helpers.get_api_data(test_endpoint)
+def test_validate_pet_schema_response():
+    endpoint = "/pets/"
+    response = api_helpers.get_api_data(endpoint)
 
-    assert response.status_code == 200
+    # Check status code
+    assert response.status_code == 200, f"Expected 200 OK but got {response.status_code}"
 
-    # Validate the response schema against the defined schema in schemas.py
-    validate(instance=response.json(), schema=schemas.pet)
+    # Output response for debugging
+    print("API Response:", response.json())
 
-'''
-TODO: Finish this test by...
-1) Extending the parameterization to include all available statuses
-2) Validate the appropriate response code
-3) Validate the 'status' property in the response is equal to the expected status
-4) Validate the schema for each object in the response
-'''
-@pytest.mark.parametrize("status", [("available")])
-def test_find_by_status_200(status):
-    test_endpoint = "/pets/findByStatus"
-    params = {
-        "status": status
-    }
+    # Schema validation
+    try:
+        validate_schema(instance=response.json(), schema=schemas.pet_schema)
+        print(" Response matches the expected schema.")
+    except ValidationError as validation_error:
+        print(" Schema validation failed:", validation_error)
+        raise
 
-    response = api_helpers.get_api_data(test_endpoint, params)
-    # TODO...
+# ---------------------- Test: Find Pets by Status ----------------------
 
-'''
-TODO: Finish this test by...
-1) Testing and validating the appropriate 404 response for /pets/{pet_id}
-2) Parameterizing the test for any edge cases
-'''
-def test_get_by_id_404():
-    # TODO...
-    pass
+@pytest.mark.parametrize("expected_status", ["available", "pending", "sold"])
+def test_find_pets_by_status(expected_status):
+    endpoint = "/pets/findByStatus"
+    params = {"status": expected_status}
+
+    response = api_helpers.get_api_data(endpoint, params=params)
+
+    assert response.status_code == 200, f"Expected 200 OK, got {response.status_code}"
+
+    pets_list = response.json()
+
+    # Validate each pet item
+    for idx, pet in enumerate(pets_list):
+        assert pet.get("status") == expected_status, (
+            f"Pet at index {idx} has unexpected status. Expected: '{expected_status}', Got: '{pet.get('status')}'"
+        )
+        assert "id" in pet and isinstance(pet["id"], int), f"Missing or invalid 'id' at index {idx}"
+        assert "name" in pet and isinstance(pet["name"], str), f"Missing or invalid 'name' at index {idx}"
+        assert "type" in pet and pet["type"] in ["cat", "dog", "fish"], f"Invalid 'type' at index {idx}"
+        assert "status" in pet and pet["status"] in ["available", "pending", "sold"], f"Invalid 'status' at index {idx}"
+
+        try:
+            validate_schema(instance=pet, schema=schemas.pet_schema)
+        except ValidationError as e:
+            raise AssertionError(f"Schema validation failed for pet at index {idx}: {e}")
+
+# ---------------------- Test: Invalid Pet ID (404) ----------------------
+
+@pytest.mark.parametrize("invalid_pet_id", [
+    "p",      # alphabetic ID
+    "",       # empty string
+    "!@#^*",  # special characters
+    "99999",  # large non-existent ID
+    "-4",     # negative number
+])
+def test_invalid_pet_id_returns_404(invalid_pet_id):
+    endpoint = f"/pets/{invalid_pet_id}"
+
+    response = api_helpers.get_api_data(endpoint)
+
+    assert response.status_code == 404, (
+        f"Expected 404 Not Found, but received {response.status_code} for pet_id: {invalid_pet_id}"
+    )
