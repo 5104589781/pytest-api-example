@@ -15,7 +15,6 @@ TODO: Finish this test by...
 '''
 
 
-# ---------- Fixture: Create a new order before test execution ----------
 
 @pytest.fixture
 def new_order_payload():
@@ -28,7 +27,6 @@ def new_order_payload():
     
     return response.json()
 
-# ---------- Test: PATCH order with valid data ----------
 
 def test_update_order_with_patch(new_order_payload):
     updated_order_data = {"pet_id": 1}  # Changing the pet ID
@@ -59,8 +57,6 @@ def test_update_order_with_patch(new_order_payload):
     # Field assertions
     assert_that(response_json["order"]["pet_id"], is_(1))
     assert_that(response_json["pet"]["status"], is_("sold"))
-
-# ---------- Test: PATCH with an invalid pet ID (edge case) ----------
 
 def test_patch_order_with_invalid_pet_id():
     invalid_order_id = "fake_pet"
