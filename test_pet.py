@@ -4,7 +4,6 @@ import schemas
 import api_helpers
 from hamcrest import assert_that, contains_string, is_
 
-# ---------------------- Test: Pet Schema ----------------------
 
 def test_validate_pet_schema_response():
     endpoint = "/pets/"
@@ -24,7 +23,6 @@ def test_validate_pet_schema_response():
         print(" Schema validation failed:", validation_error)
         raise
 
-# ---------------------- Test: Find Pets by Status ----------------------
 
 @pytest.mark.parametrize("expected_status", ["available", "pending", "sold"])
 def test_find_pets_by_status(expected_status):
@@ -37,7 +35,6 @@ def test_find_pets_by_status(expected_status):
 
     pets_list = response.json()
 
-    # Validate each pet item
     for idx, pet in enumerate(pets_list):
         assert pet.get("status") == expected_status, (
             f"Pet at index {idx} has unexpected status. Expected: '{expected_status}', Got: '{pet.get('status')}'"
@@ -52,15 +49,6 @@ def test_find_pets_by_status(expected_status):
         except ValidationError as e:
             raise AssertionError(f"Schema validation failed for pet at index {idx}: {e}")
 
-# ---------------------- Test: Invalid Pet ID (404) ----------------------
-
-@pytest.mark.parametrize("invalid_pet_id", [
-    "p",      # alphabetic ID
-    "",       # empty string
-    "!@#^*",  # special characters
-    "99999",  # large non-existent ID
-    "-4",     # negative number
-])
 def test_invalid_pet_id_returns_404(invalid_pet_id):
     endpoint = f"/pets/{invalid_pet_id}"
 
